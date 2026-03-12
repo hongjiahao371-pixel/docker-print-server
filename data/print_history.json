@@ -1,0 +1,24 @@
+[
+  {
+    "id": 2,
+    "filename": "绿联NAS竞品营销周报_20260302.docx",
+    "printer": "HP_DeskJet_2130_series",
+    "copies": 1,
+    "sides": "one-sided",
+    "success": true,
+    "error": null,
+    "filepath": "/app/uploads/1bd3b332cb2b48d794315b1cc37d0194.pdf",
+    "timestamp": "2026-03-12 06:08:18"
+  },
+  {
+    "id": 1,
+    "filename": "绿联NAS竞品营销周报_20260302.docx",
+    "printer": "HP_DeskJet_2130_series",
+    "copies": 1,
+    "sides": "one-sided",
+    "success": true,
+    "error": null,
+    "filepath": "/app/uploads/e1b17d0d890743eb81de916096a85b5b.pdf",
+    "timestamp": "2026-03-11 15:59:42"
+  }
+]

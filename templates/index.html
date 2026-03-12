@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Docker打印服务器</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+    <div class="background"></div>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-print"></i>
+                <h1>Docker打印服务器</h1>
+            </div>
+            <p class="subtitle">轻松上传文件，快速打印</p>
+        </div>
+
+        <div class="main-content">
+            <!-- 状态卡片 -->
+            <div class="card status-card">
+                <div class="card-header">
+                    <i class="fas fa-server"></i>
+                    <h2>系统状态</h2>
+                </div>
+                <div class="card-body">
+                    <div id="status-content" class="status-loading">
+                        <div class="spinner"></div>
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 打印机列表卡片 -->
+            <div class="card printers-card">
+                <div class="card-header">
+                    <i class="fas fa-print"></i>
+                    <h2>可用打印机</h2>
+                </div>
+                <div class="card-body">
+                    <div id="printers-content" class="status-loading">
+                        <div class="spinner"></div>
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 上传卡片 -->
+            <div class="card upload-card">
+                <div class="card-header">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h2>上传文件</h2>
+                </div>
+                <div class="card-body">
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <!-- 拖拽上传区域 -->
+                        <div class="upload-zone" id="uploadZone">
+                            <div class="upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <div class="upload-text">
+                                <p class="upload-title">拖拽文件到这里</p>
+                                <p class="upload-subtitle">或者</p>
+                                <button type="button" class="btn btn-select" id="selectFileBtn">
+                                    <i class="fas fa-folder-open"></i>
+                                    选择文件
+                                </button>
+                                <input type="file" id="fileInput" name="files" multiple hidden>
+                            </div>
+                            <div class="upload-info">
+                                <p><i class="fas fa-info-circle"></i> 支持格式: PDF, TXT, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, GIF</p>
+                                <p><i class="fas fa-file-alt"></i> 最大文件大小: 50MB</p>
+                            </div>
+                        </div>
+
+                        <!-- 文件信息显示 -->
+                        <div class="file-info" id="fileInfo" style="display: none;">
+                            <div class="file-item">
+                                <div class="file-icon">
+                                    <i class="fas fa-file"></i>
+                                </div>
+                                <div class="file-details">
+                                    <p class="file-name" id="fileName">文件名.pdf</p>
+                                    <p class="file-size" id="fileSize">2.5 MB</p>
+                                </div>
+                                <button type="button" class="btn btn-remove" id="removeFileBtn">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 文件预览区域 -->
+                        <div class="form-group" id="previewGroup" style="display: none;">
+                            <label>
+                                <i class="fas fa-eye"></i>
+                                文件预览
+                            </label>
+                            <div class="preview-container" id="previewContainer">
+                                <div class="preview-content" id="previewContent">
+                                    <!-- 预览内容将在这里显示 -->
+                                </div>
+                                <div class="preview-controls" id="previewControls" style="display: none;">
+                                    <button type="button" class="btn btn-small" id="prevPageBtn" title="上一页">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <span class="preview-page-info" id="previewPageInfo">第 1 页 / 共 1 页</span>
+                                    <button type="button" class="btn btn-small" id="nextPageBtn" title="下一页">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                                <button type="button" class="btn btn-small" id="closePreviewBtn" title="关闭预览">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 打印机选择 -->
+                        <div class="form-group">
+                            <label for="printerSelect">
+                                <i class="fas fa-print"></i>
+                                选择打印机
+                            </label>
+                            <select id="printerSelect" name="printer">
+                                <option value="">默认打印机</option>
+                            </select>
+                        </div>
+
+                        <!-- 打印份数 -->
+                        <div class="form-group">
+                            <label for="copiesInput">
+                                <i class="fas fa-copy"></i>
+                                打印份数
+                            </label>
+                            <input type="number" id="copiesInput" name="copies" min="1" max="100" value="1" class="copies-input">
+                            <p class="form-hint">支持1-100份</p>
+                        </div>
+
+                        <!-- 双面打印选项 -->
+                        <div class="form-group">
+                            <label for="sidesSelect">
+                                <i class="fas fa-file-alt"></i>
+                                双面打印
+                            </label>
+                            <select id="sidesSelect" name="sides" class="copies-input">
+                                <option value="one-sided">单面打印</option>
+                                <option value="two-sided-long-edge">双面打印（长边装订）</option>
+                                <option value="two-sided-short-edge">双面打印（短边装订）</option>
+                            </select>
+                            <p class="form-hint">选择打印方式</p>
+                        </div>
+
+                        <!-- 页码选择 -->
+                        <div class="form-group">
+                            <label for="pageRangeInput">
+                                <i class="fas fa-file-pdf"></i>
+                                页码范围
+                            </label>
+                            <input type="text" id="pageRangeInput" name="pageRange" class="copies-input" placeholder="例如: 1,3-5,10">
+                            <p class="form-hint">留空打印全部页，例: 1,3-5 表示打印第1、3、4、5页</p>
+                        </div>
+
+                        <!-- 提交按钮 -->
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary" id="uploadBtn" disabled>
+                                <span class="btn-content">
+                                    <i class="fas fa-print"></i>
+                                    <span>上传并打印</span>
+                                </span>
+                                <span class="btn-loading" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <span>处理中...</span>
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 打印历史卡片 -->
+            <div class="card history-card">
+                <div class="card-header">
+                    <i class="fas fa-history"></i>
+                    <h2>打印历史</h2>
+                    <button type="button" class="btn btn-small" id="clearHistoryBtn" title="清空历史">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="history-content" class="status-loading">
+                        <div class="spinner"></div>
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 结果卡片 -->
+            <div class="card result-card" id="resultCard" style="display: none;">
+                <div class="card-header">
+                    <i class="fas fa-check-circle"></i>
+                    <h2>结果</h2>
+                </div>
+                <div class="card-body">
+                    <div id="resultContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p><i class="fas fa-heart"></i> Powered by CUPS & Docker</p>
+        </footer>
+    </div>
+
+    <script>
+        // 配置PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // 全局变量用于PDF预览
+        let currentPdf = null;
+        let currentPage = 1;
+        let totalPages = 1;
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPrinters();
+            loadStatus();
+            initDragAndDrop();
+            
+            // 每30秒刷新一次状态
+            setInterval(loadStatus, 30000);
+        });
+
+        // 初始化拖拽上传
+        function initDragAndDrop() {
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            const selectFileBtn = document.getElementById('selectFileBtn');
+
+            // 点击选择文件按钮
+            selectFileBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            // 文件选择变化
+            fileInput.addEventListener('change', function(e) {
+                handleFileSelect(e.target.files[0]);
+            });
+
+            // 拖拽事件
+            uploadZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+
+            uploadZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+            });
+
+            uploadZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileSelect(files[0]);
+                }
+            });
+        }
+
+        // 处理文件选择（支持多文件）
+        function handleFileSelect(files) {
+            // 如果传入的是单个文件对象，转换为数组
+            if (files instanceof File) {
+                files = [files];
+            }
+            
+            if (!files || files.length === 0) return;
+
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const previewGroup = document.getElementById('previewGroup');
+            const previewContent = document.getElementById('previewContent');
+
+            // 显示文件信息
+            if (files.length === 1) {
+                fileName.textContent = files[0].name;
+                fileSize.textContent = formatFileSize(files[0].size);
+                // 显示文件预览
+                showFilePreview(files[0]);
+                previewGroup.style.display = 'block';
+            } else {
+                fileName.textContent = `已选择 ${files.length} 个文件`;
+                const totalSize = Array.from(files).reduce((sum, file) => sum + file.size, 0);
+                fileSize.textContent = formatFileSize(totalSize);
+                // 多文件时不显示预览
+                previewContent.innerHTML = '<p class="preview-message">多文件上传，暂不支持预览</p>';
+                previewGroup.style.display = 'block';
+            }
+            fileInfo.style.display = 'block';
+
+            // 启用上传按钮
+            uploadBtn.disabled = false;
+
+            // 隐藏上传区域
+            document.getElementById('uploadZone').style.display = 'none';
+        }
+
+        // 显示文件预览
+        async function showFilePreview(file) {
+            const previewContent = document.getElementById('previewContent');
+            const fileExt = file.name.split('.').pop().toLowerCase();
+
+            // 清空预览内容
+            previewContent.innerHTML = '';
+
+            // 根据文件类型显示不同的预览
+            if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExt)) {
+                // 图片预览
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewContent.innerHTML = `<img src="${e.target.result}" alt="${file.name}" class="preview-image">`;
+                };
+                reader.readAsDataURL(file);
+            } else if (fileExt === 'pdf') {
+                // PDF预览
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const arrayBuffer = e.target.result;
+                        currentPdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        totalPages = currentPdf.numPages;
+                        currentPage = 1;
+
+                        // 显示翻页控件
+                        document.getElementById('previewControls').style.display = 'flex';
+
+                        await renderPdfPage(currentPage);
+                    } catch (error) {
+                        console.error('PDF预览失败:', error);
+                        previewContent.innerHTML = '<p class="preview-message">PDF预览失败</p>';
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } else if (fileExt === 'txt') {
+                // 文本预览
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const text = e.target.result;
+                    const maxChars = 1000;
+                    const displayText = text.length > maxChars ? text.substring(0, maxChars) + '...' : text;
+                    previewContent.innerHTML = `<pre class="preview-text">${displayText}</pre>`;
+                };
+                reader.readAsText(file);
+            } else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(fileExt)) {
+                // Office文档预览（转换为PDF）
+                previewContent.innerHTML = '<div class="spinner"></div><p class="preview-message">正在转换文档...</p>';
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch('/api/preview', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+
+                    if (data.success && data.type === 'pdf') {
+                        // 使用PDF.js显示转换后的PDF
+                        try {
+                            currentPdf = await pdfjsLib.getDocument(`/uploads/${data.filename}`).promise;
+                            totalPages = currentPdf.numPages;
+                            currentPage = 1;
+
+                            // 显示翻页控件
+                            document.getElementById('previewControls').style.display = 'flex';
+
+                            await renderPdfPage(currentPage);
+                        } catch (error) {
+                            console.error('PDF预览失败:', error);
+                            previewContent.innerHTML = '<p class="preview-message">文档预览失败</p>';
+                        }
+                    } else if (data.success && data.type === 'html') {
+                        // HTML预览
+                        try {
+                            const response = await fetch(`/uploads/${data.filename}`);
+                            const html = await response.text();
+                            previewContent.innerHTML = html;
+                        } catch (error) {
+                            console.error('HTML预览失败:', error);
+                            previewContent.innerHTML = '<p class="preview-message">文档预览失败</p>';
+                        }
+                    } else {
+                        previewContent.innerHTML = `<p class="preview-message">${data.error || '文档预览失败'}</p>`;
+                    }
+                } catch (error) {
+                    console.error('文档预览失败:', error);
+                    previewContent.innerHTML = '<p class="preview-message">文档预览失败</p>';
+                }
+            } else {
+                // 不支持的格式
+                previewContent.innerHTML = '<p class="preview-message">此文件格式不支持预览</p>';
+            }
+        }
+
+        // 关闭预览按钮事件
+        document.getElementById('closePreviewBtn').addEventListener('click', function() {
+            const previewGroup = document.getElementById('previewGroup');
+            previewGroup.style.display = 'none';
+            // 隐藏翻页控件
+            document.getElementById('previewControls').style.display = 'none';
+            // 清空PDF对象
+            currentPdf = null;
+            currentPage = 1;
+            totalPages = 1;
+        });
+
+        // 渲染PDF页面
+        async function renderPdfPage(pageNumber) {
+            if (!currentPdf) return;
+
+            const previewContent = document.getElementById('previewContent');
+            const pageInfo = document.getElementById('previewPageInfo');
+
+            try {
+                const page = await currentPdf.getPage(pageNumber);
+                const scale = 1.5;
+                const viewport = page.getViewport({ scale: scale });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                canvas.className = 'preview-canvas';
+
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport
+                }).promise;
+
+                previewContent.innerHTML = '';
+                previewContent.appendChild(canvas);
+
+                // 更新页码信息
+                pageInfo.textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
+
+                // 更新按钮状态
+                document.getElementById('prevPageBtn').disabled = (currentPage <= 1);
+                document.getElementById('nextPageBtn').disabled = (currentPage >= totalPages);
+            } catch (error) {
+                console.error('渲染PDF页面失败:', error);
+                previewContent.innerHTML = '<p class="preview-message">渲染失败</p>';
+            }
+        }
+
+        // 上一页按钮事件
+        document.getElementById('prevPageBtn').addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPdfPage(currentPage);
+            }
+        });
+
+        // 下一页按钮事件
+        document.getElementById('nextPageBtn').addEventListener('click', function() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderPdfPage(currentPage);
+            }
+        });
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // 移除文件
+        document.getElementById('removeFileBtn').addEventListener('click', function() {
+            const fileInput = document.getElementById('fileInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const uploadZone = document.getElementById('uploadZone');
+            const uploadBtn = document.getElementById('uploadBtn');
+
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            uploadZone.style.display = 'block';
+            uploadBtn.disabled = true;
+        });
+
+        // 加载打印机列表
+        async function loadPrinters() {
+            try {
+                const response = await fetch('/api/printers');
+                const data = await response.json();
+                
+                const select = document.getElementById('printerSelect');
+                select.innerHTML = '<option value="">默认打印机</option>';
+                
+                if (data.success && data.printers) {
+                    data.printers.forEach(printer => {
+                        const option = document.createElement('option');
+                        option.value = printer.name;
+                        option.textContent = `${printer.name} (${printer.status})`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('加载打印机列表失败:', error);
+            }
+        }
+        
+        // 加载打印历史
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const data = await response.json();
+                
+                const historyDiv = document.getElementById('history-content');
+                
+                if (data.success && data.history) {
+                    if (data.history.length === 0) {
+                        historyDiv.innerHTML = '<p class="info-message"><i class="fas fa-info-circle"></i> 暂无打印历史</p>';
+                    } else {
+                        let historyHtml = '<div class="history-list">';
+                        data.history.forEach(record => {
+                            const statusClass = record.success ? 'success' : 'error';
+                            const statusIcon = record.success ? 'fa-check-circle' : 'fa-times-circle';
+                            const statusText = record.success ? '成功' : '失败';
+                            
+                            historyHtml += `
+                                <div class="history-item ${statusClass}">
+                                    <div class="history-icon">
+                                        <i class="fas ${statusIcon}"></i>
+                                    </div>
+                                    <div class="history-details">
+                                        <p class="history-filename">${record.filename}</p>
+                                        <p class="history-info">
+                                            <span class="history-printer">${record.printer}</span>
+                                            <span class="history-copies">${record.copies} 份</span>
+                                            <span class="history-time">${record.timestamp}</span>
+                                        </p>
+                                        ${record.error ? `<p class="history-error">${record.error}</p>` : ''}
+                                    </div>
+                                    <button type="button" class="btn-small btn-reprint" onclick="reprintFile('${record.id}')" ${record.success ? '' : 'disabled'}>
+                                        <i class="fas fa-redo"></i> 重新打印
+                                    </button>
+                                </div>
+                            `;
+                        });
+                        historyHtml += '</div>';
+                        historyDiv.innerHTML = historyHtml;
+                    }
+                    historyDiv.classList.remove('status-loading');
+                } else {
+                    historyDiv.innerHTML = '<p class="error-message"><i class="fas fa-exclamation-triangle"></i> 无法加载打印历史</p>';
+                    historyDiv.classList.remove('status-loading');
+                }
+            } catch (error) {
+                console.error('加载打印历史失败:', error);
+                const historyDiv = document.getElementById('history-content');
+                historyDiv.innerHTML = '<p class="error-message"><i class="fas fa-exclamation-triangle"></i> 无法加载打印历史</p>';
+                historyDiv.classList.remove('status-loading');
+            }
+        }
+        
+        // 清空打印历史
+        document.getElementById('clearHistoryBtn').addEventListener('click', async function() {
+            if (confirm('确定要清空打印历史吗？')) {
+                try {
+                    const response = await fetch('/api/history/clear', {
+                        method: 'POST'
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showResult('success', '打印历史已清空');
+                        loadHistory();
+                    } else {
+                        showResult('error', data.error || '清空失败');
+                    }
+                } catch (error) {
+                    console.error('清空打印历史失败:', error);
+                    showResult('error', '清空失败，请重试');
+                }
+            }
+        });
+        
+        // 从历史记录重新打印文件
+        async function reprintFile(recordId) {
+            try {
+                const response = await fetch('/api/history/reprint', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id: recordId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult('success', data.message);
+                    // 刷新打印历史
+                    loadHistory();
+                } else {
+                    showResult('error', data.error || '重新打印失败');
+                }
+            } catch (error) {
+                console.error('重新打印失败:', error);
+                showResult('error', '网络错误，请重试');
+            }
+        }
+        
+        // 加载系统状态
+        async function loadStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('status-content');
+                const printersDiv = document.getElementById('printers-content');
+                
+                if (data.success && data.status) {
+                    const status = data.status;
+                    // 更新状态卡片
+                    let statusHtml = `
+                        <div class="status-grid">
+                            <div class="status-item ${status.cups_running ? 'success' : 'error'}">
+                                <div class="status-icon">
+                                    <i class="fas ${status.cups_running ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+                                </div>
+                                <div class="status-text">
+                                    <p class="status-label">CUPS状态</p>
+                                    <p class="status-value">${status.cups_running ? '运行中' : '未运行'}</p>
+                                </div>
+                            </div>
+                            <div class="status-item">
+                                <div class="status-icon">
+                                    <i class="fas fa-print"></i>
+                                </div>
+                                <div class="status-text">
+                                    <p class="status-label">打印机数量</p>
+                                    <p class="status-value">${status.printers_count}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    statusDiv.innerHTML = statusHtml;
+                    statusDiv.classList.remove('status-loading');
+                    
+                    // 更新打印机列表卡片
+                    if (status.printers && status.printers.length > 0) {
+                        let printersHtml = '<div class="printer-cards">';
+                        status.printers.forEach(printer => {
+                            printersHtml += `
+                                <div class="printer-card ${printer.enabled ? 'enabled' : 'disabled'}">
+                                    <div class="printer-icon">
+                                        <i class="fas fa-printer"></i>
+                                    </div>
+                                    <div class="printer-info">
+                                        <p class="printer-name">${printer.name}</p>
+                                        <p class="printer-status">${printer.status} ${printer.enabled ? '(已启用)' : '(已禁用)'}</p>
+                                    </div>
+                                    <div class="printer-indicator ${printer.enabled ? 'indicator-on' : 'indicator-off'}">
+                                        <span></span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        printersHtml += '</div>';
+                        printersDiv.innerHTML = printersHtml;
+                        printersDiv.classList.remove('status-loading');
+                    } else {
+                        printersDiv.innerHTML = '<p class="error-message"><i class="fas fa-exclamation-triangle"></i> 暂无可用打印机</p>';
+                        printersDiv.classList.remove('status-loading');
+                    }
+                } else {
+                    statusDiv.innerHTML = '<p class="error-message"><i class="fas fa-exclamation-triangle"></i> 无法获取系统状态</p>';
+                    statusDiv.classList.remove('status-loading');
+                    printersDiv.innerHTML = '<p class="error-message"><i class="fas fa-exclamation-triangle"></i> 无法获取打印机列表</p>';
+                    printersDiv.classList.remove('status-loading');
+                }
+            } catch (error) {
+                console.error('加载状态失败:', error);
+                const statusDiv = document.getElementById('status-content');
+                const printersDiv = document.getElementById('printers-content');
+                statusDiv.innerHTML = '<p class="error-message"><i class="fas fa-exclamation-triangle"></i> 无法获取系统状态</p>';
+                statusDiv.classList.remove('status-loading');
+                printersDiv.innerHTML = '<p class="error-message"><i class="fas fa-exclamation-triangle"></i> 无法获取打印机列表</p>';
+                printersDiv.classList.remove('status-loading');
+            }
+        }
+
+        // 处理文件上传（支持多文件）
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('fileInput');
+            const printerSelect = document.getElementById('printerSelect');
+            const copiesInput = document.getElementById('copiesInput');
+            const sidesSelect = document.getElementById('sidesSelect');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const btnContent = uploadBtn.querySelector('.btn-content');
+            const btnLoading = uploadBtn.querySelector('.btn-loading');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showResult('error', '请选择要上传的文件');
+                return;
+            }
+            
+            // 验证打印份数
+            const copies = parseInt(copiesInput.value);
+            if (isNaN(copies) || copies < 1 || copies > 100) {
+                showResult('error', '打印份数必须在1-100之间');
+                return;
+            }
+            
+            // 获取双面打印选项
+            const sides = sidesSelect.value;
+            
+            // 显示加载状态
+            btnContent.style.display = 'none';
+            btnLoading.style.display = 'inline-flex';
+            uploadBtn.disabled = true;
+            
+            const formData = new FormData();
+            // 添加所有文件
+            Array.from(fileInput.files).forEach(file => {
+                formData.append('files', file);
+            });
+            formData.append('printer', printerSelect.value);
+            formData.append('copies', copies);
+            formData.append('sides', sides);
+            
+            // 添加页码范围
+            const pageRangeInput = document.getElementById('pageRangeInput');
+            if (pageRangeInput && pageRangeInput.value.trim()) {
+                formData.append('pageRange', pageRangeInput.value.trim());
+            }
+            
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult('success', data.message);
+                    // 清空文件输入
+                    fileInput.value = '';
+                    document.getElementById('fileInfo').style.display = 'none';
+                    document.getElementById('previewGroup').style.display = 'none';
+                    document.getElementById('uploadZone').style.display = 'block';
+                    uploadBtn.disabled = true;
+                    // 刷新打印历史
+                    loadHistory();
+                } else {
+                    showResult('error', data.error || '上传失败');
+                }
+            } catch (error) {
+                console.error('上传失败:', error);
+                showResult('error', '网络错误，请重试');
+            } finally {
+                // 恢复按钮状态
+                btnContent.style.display = 'inline-flex';
+                btnLoading.style.display = 'none';
+                uploadBtn.disabled = false;
+            }
+        });
+
+        // 显示结果
+        function showResult(type, message) {
+            const resultCard = document.getElementById('resultCard');
+            const resultContent = document.getElementById('resultContent');
+            
+            resultCard.style.display = 'block';
+            resultContent.innerHTML = `
+                <div class="result-message result-${type}">
+                    <div class="result-icon">
+                        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                    </div>
+                    <div class="result-text">
+                        <p class="result-title">${type === 'success' ? '成功' : '失败'}</p>
+                        <p class="result-desc">${message}</p>
+                    </div>
+                </div>
+            `;
+            
+            // 滚动到结果区域
+            resultCard.scrollIntoView({ behavior: 'smooth' });
+            
+            // 5秒后自动隐藏成功消息
+            if (type === 'success') {
+                setTimeout(() => {
+                    resultCard.style.display = 'none';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>

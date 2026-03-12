@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  print-server:
+    image: jvsheng/docker-print-server:latest
+    container_name: print-server
+    ports:
+      - "5501:5000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./data:/app/data
+    environment:
+      - CUPS_HOST=cups-server
+      - CUPS_PORT=631
+    restart: unless-stopped
+
+  cups-server:
+    image: ydkn/cups
+    container_name: cups-server
+    ports:
+      - "1631:631"
+    environment:
+      - CUPS_ADMIN_USER=admin
+      - CUPS_ADMIN_PASSWORD=admin
+    volumes:
+      - cups-config:/etc/cups
+      - cups-spool:/var/spool/cups
+      - cups-log:/var/log/cups
+    restart: unless-stopped
+
+volumes:
+  cups-config:
+  cups-spool:
+  cups-log:
