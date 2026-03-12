@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # 打印管理界面（可选，如果已有可跳过）
   print-server:
     image: jvsheng/docker-print-server:latest
     container_name: print-server
@@ -10,10 +11,12 @@ services:
       - ./uploads:/app/uploads
       - ./data:/app/data
     environment:
-      - CUPS_HOST=cups-server
+      # 修改这里！指向你的CUPS地址
+      - CUPS_HOST=your-cups-ip
       - CUPS_PORT=631
     restart: unless-stopped
 
+  # CUPS服务器（可选，如果已有可跳过）
   cups-server:
     image: ydkn/cups
     container_name: cups-server
@@ -26,9 +29,33 @@ services:
       - cups-config:/etc/cups
       - cups-spool:/var/spool/cups
       - cups-log:/var/log/cups
+    # 添加打印机设备（根据实际情况修改）
+    devices:
+      - /dev/usb:/dev/usb
     restart: unless-stopped
 
 volumes:
   cups-config:
   cups-spool:
   cups-log:
+
+# 使用已有CUPS的配置示例：
+# ------------------------------
+# 如果你已经有运行在其他地方的CUPS服务（比如路由器上的CUPS），
+# 只需要部署 print-server，并修改环境变量：
+#
+# version: '3.8'
+# services:
+#   print-server:
+#     image: jvsheng/docker-print-server:latest
+#     container_name: print-server
+#     ports:
+#       - "5501:5000"
+#     volumes:
+#       - ./uploads:/app/uploads
+#       - ./data:/app/data
+#     environment:
+#       # 修改为你的CUPS地址和端口
+#       - CUPS_HOST=192.168.1.1   # 你的CUPS服务器IP
+#       - CUPS_PORT=631             # CUPS端口
+#     restart: unless-stopped
